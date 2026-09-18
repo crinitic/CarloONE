@@ -1,0 +1,57 @@
+name: Build and Deploy Resume
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Pandoc and WeasyPrint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc weasyprint
+
+      - name: Create Build Directory
+        run: mkdir public
+
+      - name: Generate HTML Resume
+        run: |
+          pandoc resume.md \
+            --standalone \
+            --css=style.css \
+            -o public/index.html \
+            --metadata title="Resume"
+
+      - name: Generate PDF Resume
+        run: |
+          pandoc resume.md \
+            --pdf-engine=weasyprint \
+            --css=style.css \
+            -o public/resume.pdf
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
